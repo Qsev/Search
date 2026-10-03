@@ -625,7 +625,14 @@ struct ContentView: View {
             // is pressed the page is on its way, and the field is not what
             // there is to watch.
             .animation(browser.fieldShowing ? Motion.settle : Motion.quick, value: browser.fieldShowing)
-            .background(WindowSetup { window = $0; dress($0) })
+            .background(WindowSetup {
+                window = $0
+                dress($0)
+                if let tab = browser.active { WindowTitle.set(tab, in: $0) }
+            })
+            .background {
+                if let tab = browser.active { WindowTitle(tab: tab, window: window).id(tab.id) }
+            }
             .onChange(of: browser.prefs.sidebar) { _, _ in
                 DispatchQueue.main.async { Lights.refresh(window); measureLights() }
             }

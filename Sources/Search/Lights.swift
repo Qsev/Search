@@ -33,6 +33,13 @@ final class Lights: NSObject {
         kept[ObjectIdentifier(window)]?.place()
     }
 
+    /// Puts the lights back only when something moved them. A page whose
+    /// title changes every second asks for this each time, so it only looks.
+    static func refreshIfMoved(_ window: NSWindow?) {
+        guard let window, let lights = kept[ObjectIdentifier(window)], lights.misplaced() else { return }
+        lights.place()
+    }
+
     private weak var window: NSWindow?
     private let moved: () -> Void
     private let centreX: () -> CGFloat
@@ -75,6 +82,23 @@ final class Lights: NSObject {
 
     private var buttons: [NSButton] {
         [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { window?.standardWindowButton($0) }
+    }
+
+    /// Whether `place` would move anything: the same arithmetic, changing nothing.
+    private func misplaced() -> Bool {
+        guard !placing, let window, !window.styleMask.contains(.fullScreen) else { return false }
+        let buttons = self.buttons
+        guard buttons.count == 3, let bar = buttons[0].superview, let container = bar.superview else { return false }
+        if container.frame.height != Metrics.strip || container.frame.maxY != window.frame.height { return true }
+        for (index, button) in buttons.enumerated() {
+            let size = button.frame.size
+            let origin = NSPoint(
+                x: centreX() - size.width / 2 + CGFloat(index) * spacing,
+                y: bar.bounds.height - Lights.centre.y - size.height / 2
+            )
+            if button.frame.origin != origin { return true }
+        }
+        return false
     }
 
     @objc private func place() {
